@@ -2,20 +2,28 @@
 
 # dotvet 🛡️
 
-**Zero-config environment variable security scanner & quality gate.**
+**The top security tool for vibe coders — zero-config environment variable security scanner & quality gate.**
 
 *Validate presence, ban dangerous placeholders, and enforce secret entropy before deploying to production.*
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-dotvet--action-blue?style=flat-square&logo=githubactions)](https://github.com/marketplace/actions/dotvet-security-quality-gate)
 [![dotvet: secure](https://ethiccode.in/dotvet/badge.svg)](https://ethiccode.in/dotvet)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=flat-square)](LICENSE)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg?style=flat-square)](#why-zero-dependencies)
+
+![dotvet catching a weak JWT secret and a placeholder database URL](dotvet-demo.gif)
 
 </div>
 
 ---
 
 ## ⚡ Why dotvet? (The Comparison)
+
+> ### 🤖 Built for Vibe Coders
+> When vibe coding with AI agents (Cursor, Claude, Lovable, v0, Copilot), models routinely generate mock placeholders (`JWT_SECRET="changeme"`, `DATABASE_URL="postgres://user:password@localhost:5432/test"`), introduce new env keys in code without updating `.env`, or forget to add `.env` to `.gitignore`.
+>
+> **`dotvet` is the zero-friction safety net.** It requires 0 configuration, spots every security gap in sub-200ms, and heals your local environment with a single command (`npx dotvet fix`).
 
 Most environment linters (`dotenv-safe`, `envalid`) only check if a key **exists**. They don't care if its value is `"changeme"` or a 6-character toy secret that can be cracked in 2 seconds.
 
@@ -92,13 +100,15 @@ Commit `.env.schema.json` to Git. Whenever a teammate pulls the repository or ru
 Audits `.env` against variables referenced in your code:
 ```bash
 npx dotvet
-# or
+# or target a specific subfolder / monorepo package
+npx dotvet check backend/
+# or specify an alternate env file
 dotvet check --env .env.production
 ```
 
 **Example Output:**
 ```
-dotvet v0.1.7 — Auditing environment variables in /projects/my-app
+dotvet v0.1.8 — Auditing environment variables in /projects/my-app
 Environment file: .env (found) | Found 4 vars in code
 
  WARN  .env (GITIGNORE_MISSING)
@@ -126,7 +136,15 @@ PASSED CHECKS (2):
 
 ---
 
-### 2. `dotvet scan`
+### 2. `dotvet init`
+Initializes dotvet in your project by scaffolding a clean `.dotvetignore` template and verifying `.gitignore` safely excludes `.env`:
+```bash
+npx dotvet init
+```
+
+---
+
+### 3. `dotvet scan`
 Inspects your entire codebase and maps out where every environment variable is used:
 ```bash
 npx dotvet scan
@@ -167,7 +185,9 @@ dotvet scan — Discovered 3 environment variables:
 | Flag | Default | Description |
 | :--- | :--- | :--- |
 | `--env <path>` | `.env` | Path to environment file to audit |
+| `--dir, -d <path>` | `.` | Target directory to scan (or pass positional path: `npx dotvet check backend/`) |
 | `--ignore, -i <vars>` | | Ignore specific variables or rules (comma-separated, e.g. `-i LEGACY_KEY,API_KEY:WEAK_SECRET_LENGTH`) |
+| `--include-cgi` | `false` | Include standard CGI/PHP web server variables (RFC 3875) in scan |
 | `--strict` | `false` | Treat warnings as hard errors (non-zero exit) |
 | `--ci` | `false` | Emits GitHub Actions annotations (`::error file=...`) |
 | `--json` | `false` | Emits machine-readable JSON output |
@@ -176,12 +196,12 @@ dotvet scan — Discovered 3 environment variables:
 
 ---
 
-## 🛡️ Ignoring Variables & Rules
+## 🛡️ Ignoring Variables & Configuration
 
 Need to exempt a legacy variable or specific rule without compromising the entire security check? `dotvet` supports multiple flexible ways:
 
 ### 1. `.dotvetignore` file (Repo root)
-Create a `.dotvetignore` file:
+Run `dotvet init` to generate `.dotvetignore`:
 ```text
 # Exempt an entire variable from all checks
 LEGACY_CLIENT_TOKEN
@@ -190,7 +210,21 @@ LEGACY_CLIENT_TOKEN
 CUSTOM_KEY:WEAK_SECRET_LENGTH
 ```
 
-### 2. Inline `# dotvet-ignore` comments in `.env`
+### 2. Configuration file (`dotvet.config.json` or `.dotvetrc.json`)
+You can configure global rules and ignores in `dotvet.config.json` or `package.json`:
+```json
+{
+  "ignore": [
+    "LEGACY_API_KEY",
+    "CUSTOM_TOKEN:WEAK_SECRET_LENGTH"
+  ],
+  "rules": {
+    "JWT_UNDERSIZED": { "severity": "warn" }
+  }
+}
+```
+
+### 3. Inline `# dotvet-ignore` comments in `.env`
 ```bash
 # Ignore all checks for this line
 LEGACY_KEY=short # dotvet-ignore
@@ -199,7 +233,7 @@ LEGACY_KEY=short # dotvet-ignore
 DEV_SECRET=short # dotvet-ignore:WEAK_SECRET_LENGTH
 ```
 
-### 3. CLI flag (`--ignore`, `-i`)
+### 4. CLI flag (`--ignore`, `-i`)
 ```bash
 npx dotvet check --strict --ignore "LEGACY_KEY,DEV_KEY:WEAK_SECRET_LENGTH"
 ```
@@ -221,7 +255,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Environment Variable Security
-        uses: EthicCodeTech/dotvet@main
+        uses: EthicCodeTech/dotvet@v1
         with:
           strict: 'true'
         env:
@@ -238,6 +272,16 @@ Recent attacks on the open-source supply chain demonstrated how deeply nested de
 - Sub-200ms cold startup in CI.
 - Zero transitive supply chain attack surface.
 - Full immunity to third-party package vulnerabilities.
+
+---
+
+## 🤝 Open to Contributions
+
+We love community contributions! Whether you're adding support for a new framework or language pattern, refining regex scanners, or creating new security heuristics, `dotvet` is 100% open source and community-driven.
+
+* Check out our **[Contributing Guide](CONTRIBUTING.md)** for local development setup and guidelines.
+* Found a bug or have a suggestion? Open an **[Issue](https://github.com/EthicCodeTech/dotvet/issues)**.
+* Have a fix ready? Submit a **[Pull Request](https://github.com/EthicCodeTech/dotvet/pulls)**!
 
 ---
 
